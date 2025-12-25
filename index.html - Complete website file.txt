@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celestial Birth Chart Calculator</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Lucide React icons as simple SVG components
+        const Star = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+            </svg>
+        );
+
+        const MapPin = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        );
+
+        const Loader2 = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+        );
+
+        const AstrologyChart = () => {
+            const [formData, setFormData] = useState({
+                date: '',
+                time: '',
+                city: '',
+                country: '',
+                latitude: '',
+                longitude: '',
+                timezone: ''
+            });
+            const [chart, setChart] = useState(null);
+            const [loading, setLoading] = useState(false);
+
+            const zodiacSymbols = {
+                'Aries': '♈', 'Taurus': '♉', 'Gemini': '♊', 'Cancer': '♋',
+                'Leo': '♌', 'Virgo': '♍', 'Libra': '♎', 'Scorpio': '♏',
+                'Sagittarius': '♐', 'Capricorn': '♑', 'Aquarius': '♒', 'Pisces': '♓'
+            };
+
+            const planetInfo = {
+                'Sun': { symbol: '☉', color: 'text-yellow-500' },
+                'Moon': { symbol: '☽', color: 'text-blue-300' },
+                'Mercury': { symbol: '☿', color: 'text-gray-400' },
+                'Venus': { symbol: '♀', color: 'text-pink-400' },
+                'Mars': { symbol: '♂', color: 'text-red-500' },
+                'Jupiter': { symbol: '♃', color: 'text-orange-400' },
+                'Saturn': { symbol: '♄', color: 'text-yellow-600' },
+                'Uranus': { symbol: '♅', color: 'text-cyan-400' },
+                'Neptune': { symbol: '♆', color: 'text-blue-500' },
+                'Pluto': { symbol: '♇', color: 'text-purple-400' }
+            };
+
+            const cityDatabase = {
+                'adelaide': { lat: -34.9285, lon: 138.6007, tz: 10.5, country: 'Australia' },
+                'sydney': { lat: -33.8688, lon: 151.2093, tz: 10, country: 'Australia' },
+                'melbourne': { lat: -37.8136, lon: 144.9631, tz: 10, country: 'Australia' },
+                'brisbane': { lat: -27.4698, lon: 153.0251, tz: 10, country: 'Australia' },
+                'perth': { lat: -31.9505, lon: 115.8605, tz: 8, country: 'Australia' },
+                'new york': { lat: 40.7128, lon: -74.0060, tz: -5, country: 'USA' },
+                'los angeles': { lat: 34.0522, lon: -118.2437, tz: -8, country: 'USA' },
+                'london': { lat: 51.5074, lon: -0.1278, tz: 0, country: 'UK' },
+                'paris': { lat: 48.8566, lon: 2.3522, tz: 1, country: 'France' },
+                'tokyo': { lat: 35.6762, lon: 139.6503, tz: 9, country: 'Japan' }
+            };
+
+            const searchLocation = () => {
+                if (!formData.city || formData.city.trim() === '') {
+                    alert('Please enter a city first');
+                    return;
+                }
+
+                const cityKey = formData.city.toLowerCase().trim();
+                const cityData = cityDatabase[cityKey];
+                
+                if (cityData) {
+                    setFormData({
+                        ...formData,
+                        latitude: cityData.lat.toString(),
+                        longitude: cityData.lon.toString(),
+                        timezone: cityData.tz.toString()
+                    });
+                    
+                    const tzDisplay = cityData.tz >= 0 ? `+${cityData.tz}` : cityData.tz;
+                    alert(`✓ Found: ${formData.city}, ${cityData.country}\n\nLatitude: ${cityData.lat}\nLongitude: ${cityData.lon}\nTimezone: UTC${tzDisplay}`);
+                } else {
+                    alert(`❌ "${formData.city}" not found. Enter coordinates manually.`);
+                }
+            };
+
+            const calculateChart = async () => {
+                if (!formData.date || !formData.time || !formData.latitude || !formData.longitude) {
+                    alert('Please enter birth date, time, latitude, and longitude');
+                    return;
+                }
+
+                setLoading(true);
+
+                try {
+                    const [year, month, day] = formData.date.split('-');
+                    const [hour, minute] = formData.time.split(':');
+
+                    const requestData = {
+                        day: parseInt(day),
+                        month: parseInt(month),
+                        year: parseInt(year),
+                        hour: parseInt(hour),
+                        min: parseInt(minute),
+                        lat: parseFloat(formData.latitude),
+                        lon: parseFloat(formData.longitude),
+                        tzone: parseFloat(formData.timezone || 0)
+                    };
+
+                    const response = await fetch('/.netlify/functions/astrology', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${JSON.stringify(data)}`);
+                    }
+
+                    const sunData = data.Sun || {};
+                    const moonData = data.Moon || {};
+                    const ascendantData = data.Ascendant || {};
+                    
+                    const sunSign = sunData.sign || 'Unknown';
+                    const moonSign = moonData.sign || 'Unknown';
+                    const risingSign = ascendantData.sign || 'Unknown';
+
+                    const planetaryPositions = Object.entries(planetInfo)
+                        .filter(([name]) => data[name])
+                        .map(([name, info]) => {
+                            const planet = data[name];
+                            return {
+                                name: name,
+                                symbol: info.symbol,
+                                color: info.color,
+                                sign: planet.sign || 'Unknown',
+                                degree: Math.floor(planet.normDegree || 0),
+                                minute: Math.floor(((planet.normDegree || 0) % 1) * 60),
+                                isRetrograde: planet.isRetro === 'true' || planet.isRetro === true
+                            };
+                        });
+
+                    setChart({
+                        sunSign,
+                        moonSign,
+                        risingSign,
+                        ascendantDegree: Math.floor(ascendantData.normDegree || 0),
+                        planets: planetaryPositions
+                    });
+
+                    setLoading(false);
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error calculating chart: ' + error.message);
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-indigo-900 p-8">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="text-center mb-12">
+                            <div className="flex items-center justify-center gap-3 mb-4">
+                                <Star className="w-8 h-8 text-yellow-300" />
+                                <h1 className="text-5xl font-bold text-white">Celestial Birth Chart</h1>
+                                <Star className="w-8 h-8 text-yellow-300" />
+                            </div>
+                            <p className="text-purple-200 text-lg">Professional astrology powered by Swiss Ephemeris</p>
+                        </div>
+
+                        <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl mb-8">
+                            <div className="space-y-6">
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-purple-200 mb-2 text-sm font-medium">Birth Date</label>
+                                        <input
+                                            type="date"
+                                            value={formData.date}
+                                            onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                            className="w-full px-4 py-3 rounded-xl bg-white bg-opacity-20 text-white border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-purple-200 mb-2 text-sm font-medium">Birth Time</label>
+                                        <input
+                                            type="time"
+                                            value={formData.time}
+                                            onChange={(e) => setFormData({...formData, time: e.target.value})}
+                                            className="w-full px-4 py-3 rounded-xl bg-white bg-opacity-20 text-white border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-purple-200 mb-2 text-sm font-medium">Birth Location</label>
+                                    <div className="grid md:grid-cols-2 gap-4 mb-2">
+                                        <input
+                                            type="text"
+                                            value={formData.city}
+                                            onChange={(e) => setFormData({...formData, city: e.target.value})}
+                                            placeholder="City (e.g., Adelaide)"
+                                            className="px-4 py-3 rounded-xl bg-white bg-opacity-20 text-white placeholder-purple-300 border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={formData.country}
+                                            onChange={(e) => setFormData({...formData, country: e.target.value})}
+                                            placeholder="Country (e.g., Australia)"
+                                            className="px-4 py-3 rounded-xl bg-white bg-opacity-20 text-white placeholder-purple-300 border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={searchLocation}
+                                        className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <MapPin className="w-4 h-4" />
+                                        Search for Coordinates
+                                    </button>
+                                </div>
+
+                                <div className="grid md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-purple-200 mb-2 text-sm font-medium">Latitude</label>
+                                        <input
+                                            type="number"
+                                            step="0.0001"
+                                            value={formData.latitude}
+                                            onChange={(e) => setFormData({...formData, latitude: e.target.value})}
+                                            placeholder="-34.9285"
+                                            className="w-full px-4 py-3 rounded-xl bg-white bg-opacity-20 text-white placeholder-purple-300 border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-purple-200 mb-2 text-sm font-medium">Longitude</label>
+                                        <input
+                                            type="number"
+                                            step="0.0001"
+                                            value={formData.longitude}
+                                            onChange={(e) => setFormData({...formData, longitude: e.target.value})}
+                                            placeholder="138.6007"
+                                            className="w-full px-4 py-3 rounded-xl bg-white bg-opacity-20 text-white placeholder-purple-300 border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-purple-200 mb-2 text-sm font-medium">Timezone</label>
+                                        <input
+                                            type="number"
+                                            step="0.5"
+                                            value={formData.timezone}
+                                            onChange={(e) => setFormData({...formData, timezone: e.target.value})}
+                                            placeholder="10.5"
+                                            className="w-full px-4 py-3 rounded-xl bg-white bg-opacity-20 text-white placeholder-purple-300 border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={calculateChart}
+                                    disabled={loading}
+                                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-4 rounded-xl font-semibold text-lg hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Calculating...
+                                        </>
+                                    ) : (
+                                        'Generate My Chart'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {chart && (
+                            <div className="space-y-6">
+                                <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl">
+                                    <h2 className="text-3xl font-bold text-white mb-6 text-center">Your Big Three</h2>
+                                    <div className="grid md:grid-cols-3 gap-6">
+                                        <div className="text-center p-6 bg-yellow-500 bg-opacity-20 rounded-2xl">
+                                            <div className="text-5xl mb-3">{zodiacSymbols[chart.sunSign] || '☉'}</div>
+                                            <h3 className="text-yellow-200 text-sm font-medium mb-2">Sun Sign</h3>
+                                            <p className="text-white text-2xl font-bold">{chart.sunSign}</p>
+                                            <p className="text-purple-200 text-sm mt-2">Your core essence</p>
+                                        </div>
+                                        <div className="text-center p-6 bg-blue-500 bg-opacity-20 rounded-2xl">
+                                            <div className="text-5xl mb-3">{zodiacSymbols[chart.moonSign] || '☽'}</div>
+                                            <h3 className="text-blue-200 text-sm font-medium mb-2">Moon Sign</h3>
+                                            <p className="text-white text-2xl font-bold">{chart.moonSign}</p>
+                                            <p className="text-purple-200 text-sm mt-2">Your emotions</p>
+                                        </div>
+                                        <div className="text-center p-6 bg-purple-500 bg-opacity-20 rounded-2xl">
+                                            <div className="text-5xl mb-3">{zodiacSymbols[chart.risingSign] || '⬆'}</div>
+                                            <h3 className="text-purple-200 text-sm font-medium mb-2">Rising Sign</h3>
+                                            <p className="text-white text-2xl font-bold">{chart.risingSign}</p>
+                                            <p className="text-purple-200 text-xs mt-2">{chart.ascendantDegree}° Ascendant</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-3xl p-8 shadow-2xl">
+                                    <h2 className="text-3xl font-bold text-white mb-6 text-center">Planetary Positions</h2>
+                                    <div className="space-y-3">
+                                        {chart.planets.map((planet, idx) => (
+                                            <div key={idx} className="flex items-center justify-between p-4 bg-white bg-opacity-5 rounded-xl hover:bg-opacity-10 transition-all">
+                                                <div className="flex items-center gap-4">
+                                                    <span className={`text-3xl ${planet.color}`}>{planet.symbol}</span>
+                                                    <div>
+                                                        <span className="text-white font-semibold text-lg">{planet.name}</span>
+                                                        {planet.isRetrograde && (
+                                                            <span className="ml-2 text-xs text-red-300 font-medium">℞</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-purple-200 text-xl font-bold">
+                                                        {planet.sign} {zodiacSymbols[planet.sign] || ''}
+                                                    </p>
+                                                    <p className="text-purple-300 text-sm">{planet.degree}° {planet.minute}'</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<AstrologyChart />, document.getElementById('root'));
+    </script>
+</body>
+</html>
